@@ -1,6 +1,8 @@
 import {Request, Response} from 'express';
 import knex from '../database/connection';
 
+// TODO: Tratar o upload de imagens, colocar para filtrar extensão e o tamanho
+// TODO: Serialição ou API Transform para fazer serialização, implementar isso na API
 class PointerControllers {
     async index(request: Request, response: Response) {
         //Filter by city, state, items (query params)
@@ -17,8 +19,15 @@ class PointerControllers {
             .where('state', String(state))
             .distinct()
             .select('points.*');
+
+        const serializedPoint = points.map(point => {
+            return {
+                ...point,
+                image_url: `http://192.168.1.6:3333/uploads/${point.image}`
+            };
+        });
         
-        return response.json(points);
+        return response.json(serializedPoint);
     }
 
     async show(request: Request, response: Response) {
@@ -30,12 +39,17 @@ class PointerControllers {
             response.status(400).json({message: 'Point not found'});
         }
 
+        const serializedPoint = {
+            ...point,
+            image_url: `http://192.168.1.6:3333/uploads/${point.image}`
+        };
+
         const items = await knex('items')
             .join('point_items', 'items.id', '=', 'point_items.item_id')
             .where('point_items.point_id', id)
             .select('items.title');
 
-        return response.json({ point, items });
+        return response.json({ point: serializedPoint, items });
     }
     
     //TODO se é uma função porque não pode colocar a palavra function (antes 1:35:30)
@@ -54,7 +68,7 @@ class PointerControllers {
         const trx = await knex.transaction();
     
         const point = {
-            image: 'https://images.unsplash.com/photo-1556767576-5ec41e3239ea?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60',
+            image: request.file.filename,
             name,
             email,
             whatsapp,
@@ -66,10 +80,12 @@ class PointerControllers {
         const insertedIds = await trx('points').insert(point);
     
         const point_id = insertedIds[0];
-        const pointItems = items.map((item_id: Number) => {
+        const pointItems = items
+            .split(',')
+            .map((item_id: string) => {
             return {
-                item_id,
-                point_id 
+                item_id: item_id.trim(),
+                point_id
             };
         });
     

@@ -24,3 +24,6 @@ yarn-error.log*
 
 # Files ignored
 package-lock.json
+
+# My annotations
+my_annotations

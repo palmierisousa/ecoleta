@@ -120,3 +120,7 @@ my_annotations
 
 # Files ignored
 package-lock.json
+uploads/*.jpg
+
+#Databases
+/**/*.sqlite
